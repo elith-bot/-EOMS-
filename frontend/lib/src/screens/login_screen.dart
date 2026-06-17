@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
+import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,6 +14,7 @@ class _LoginScreenState extends State<LoginScreen> {
   String _email = '';
   String _password = '';
   String _userType = 'student';
+  bool _loading = false;
   final List<String> _userTypes = ['student', 'teacher'];
 
   @override
@@ -43,7 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 value: _userType,
                 decoration: const InputDecoration(labelText: 'User Type'),
                 items: _userTypes
-                    .map((type) => DropdownMenuItem(value: type, child: Text(type.capitalize())))
+                    .map((type) => DropdownMenuItem(value: type, child: Text(_capitalize(type))))
                     .toList(),
                 onChanged: (value) {
                   if (value != null) {
@@ -54,10 +57,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 },
               ),
               const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _submit,
-                child: const Text('Login'),
-              ),
+              _loading
+                  ? const CircularProgressIndicator()
+                  : ElevatedButton(
+                      onPressed: _submit,
+                      child: const Text('Login'),
+                    ),
             ],
           ),
         ),
@@ -65,13 +70,32 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void _submit() {
-    if (_formKey.currentState?.validate() ?? false) {
-      _formKey.currentState?.save();
+  String _capitalize(String input) => input.isEmpty ? input : '${input[0].toUpperCase()}${input.substring(1)}';
+
+  Future<void> _submit() async {
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+
+    _formKey.currentState?.save();
+    setState(() {
+      _loading = true;
+    });
+
+    final response = await ApiService.login(_email, _password, _userType);
+    setState(() {
+      _loading = false;
+    });
+
+    if (response.statusCode == 200) {
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    } else {
+      final message = response.body.isNotEmpty ? response.body : 'Login failed';
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
     }
   }
-}
-
-extension StringExtension on String {
-  String capitalize() => isEmpty ? this : '${this[0].toUpperCase()}${substring(1)}';
 }

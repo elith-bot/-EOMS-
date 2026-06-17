@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from backend.app import db
-from backend.models import Institution, User
+from backend.models import Institution, User, Subscription
 from werkzeug.security import generate_password_hash
 
 admin_bp = Blueprint("admin", __name__)
@@ -68,7 +68,7 @@ def list_institutions():
 
 
 @admin_bp.route("/institutions/<int:institution_id>/toggle", methods=["PUT"])
-def toggle_institution():
+def toggle_institution(institution_id):
     institution = Institution.query.get(institution_id)
     if not institution:
         return jsonify({"error": "Institution not found."}), 404
