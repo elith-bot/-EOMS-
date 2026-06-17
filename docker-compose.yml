@@ -1,0 +1,14 @@
+version: "3.9"
+services:
+  elm-backend:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_APP=backend.app:create_app
+      - FLASK_ENV=development
+      - SQLALCHEMY_DATABASE_URI=sqlite:///instance/elm.db
+      - SECRET_KEY=supersecret
+    volumes:
+      - ./backend:/app/backend
+      - ./instance:/app/instance
