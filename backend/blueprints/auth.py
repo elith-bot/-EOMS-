@@ -33,7 +33,16 @@ def login():
         algorithm="HS256",
     )
 
-    response = jsonify({"access_token": token, "user": {"id": user.id, "email": user.email, "role": user.role}})
+    response = jsonify({
+        "access_token": token,
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "full_name": user.full_name,
+            "role": user.role,
+            "institution_id": user.institution_id,
+        },
+    })
     response.set_cookie(
         "elm_session",
         token,

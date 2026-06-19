@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import '../services/api_service.dart';
+import 'package:provider/provider.dart';
+
+import '../providers/auth_provider.dart';
 import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -14,87 +16,92 @@ class _LoginScreenState extends State<LoginScreen> {
   String _email = '';
   String _password = '';
   String _userType = 'student';
-  bool _loading = false;
   final List<String> _userTypes = ['student', 'teacher'];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('ELM Login')),
+      appBar: AppBar(title: const Text('تسجيل الدخول إلى ELM')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              TextFormField(
-                decoration: const InputDecoration(labelText: 'Email'),
-                keyboardType: TextInputType.emailAddress,
-                onSaved: (value) => _email = value?.trim() ?? '',
-                validator: (value) => value == null || value.isEmpty ? 'Required' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                decoration: const InputDecoration(labelText: 'Password'),
-                obscureText: true,
-                onSaved: (value) => _password = value ?? '',
-                validator: (value) => value == null || value.isEmpty ? 'Required' : null,
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: _userType,
-                decoration: const InputDecoration(labelText: 'User Type'),
-                items: _userTypes
-                    .map((type) => DropdownMenuItem(value: type, child: Text(_capitalize(type))))
-                    .toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      _userType = value;
-                    });
-                  }
-                },
-              ),
-              const SizedBox(height: 24),
-              _loading
-                  ? const CircularProgressIndicator()
-                  : ElevatedButton(
-                      onPressed: _submit,
-                      child: const Text('Login'),
+        child: Center(
+          child: SingleChildScrollView(
+            child: Consumer<AuthProvider>(builder: (context, authProvider, _) {
+              return Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      decoration: const InputDecoration(labelText: 'البريد الإلكتروني'),
+                      keyboardType: TextInputType.emailAddress,
+                      onSaved: (value) => _email = value?.trim() ?? '',
+                      validator: (value) => value == null || value.isEmpty ? 'هذا الحقل مطلوب' : null,
                     ),
-            ],
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      decoration: const InputDecoration(labelText: 'كلمة المرور'),
+                      obscureText: true,
+                      onSaved: (value) => _password = value ?? '',
+                      validator: (value) => value == null || value.isEmpty ? 'هذا الحقل مطلوب' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      initialValue: _userType,
+                      decoration: const InputDecoration(labelText: 'نوع المستخدم'),
+                      items: _userTypes
+                          .map((type) => DropdownMenuItem(value: type, child: Text(type == 'student' ? 'طالب' : 'معلم')))
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            _userType = value;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 32),
+                    authProvider.isLoading
+                        ? const CircularProgressIndicator()
+                        : ElevatedButton(
+                            style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                            onPressed: () => _submit(authProvider),
+                            child: const Text('تسجيل الدخول'),
+                          ),
+                    if (authProvider.errorMessage != null) ...[
+                      const SizedBox(height: 16),
+                      Text(
+                        authProvider.errorMessage!,
+                        style: const TextStyle(color: Colors.red),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            }),
           ),
         ),
       ),
     );
   }
 
-  String _capitalize(String input) => input.isEmpty ? input : '${input[0].toUpperCase()}${input.substring(1)}';
-
-  Future<void> _submit() async {
+  Future<void> _submit(AuthProvider authProvider) async {
     if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
 
     _formKey.currentState?.save();
-    setState(() {
-      _loading = true;
-    });
+    final success = await authProvider.login(_email, _password, _userType);
 
-    final response = await ApiService.login(_email, _password, _userType);
-    setState(() {
-      _loading = false;
-    });
-
-    if (response.statusCode == 200) {
+    if (success) {
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const HomeScreen()),
       );
     } else {
-      final message = response.body.isNotEmpty ? response.body : 'Login failed';
       if (!mounted) return;
+      final message = authProvider.errorMessage ?? 'فشل تسجيل الدخول';
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
     }
   }
