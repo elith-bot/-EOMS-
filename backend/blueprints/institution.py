@@ -14,9 +14,11 @@ def get_current_user():
     if not user:
         return jsonify({"error": "User not found."}), 404
 
+    display_email = "" if (user.email or "").endswith("@phone.elm.local") else (user.email or "")
     return jsonify({
         "id": user.id,
-        "email": user.email,
+        "email": display_email,
+        "phone": user.phone or "",
         "full_name": user.full_name,
         "role": user.role,
         "institution_id": user.institution_id,
